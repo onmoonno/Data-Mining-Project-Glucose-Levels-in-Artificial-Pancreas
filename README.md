@@ -1,81 +1,83 @@
-# Data-Mining-Project-Glucose-Levels-in-Artificial-Pancreas
-# Data Science Salary Estimator: Project Overview 
-* Created a tool that estimates data science salaries (MAE ~ $ 11K) to help data scientists negotiate their income when they get a job.
-* Scraped over 1000 job descriptions from glassdoor using python and selenium
-* Engineered features from the text of each job description to quantify the value companies put on python, excel, aws, and spark. 
-* Optimized Linear, Lasso, and Random Forest Regressors using GridsearchCV to reach the best model. 
-* Built a client facing API using flask 
+# Glucose Levels in Artificial Pancreas Project Overview:
+Data Mining Project:
+* Developed a recognition system integrating supervised and unsupervised machine learning techniques for analyzing time series data from two asynchronously operated Medtronic 670G systems collected at 5-minute intervals over a 7-day period.
+* Implemented adaptive data cleaning and extracted features, including Fast Fourier Transform (FFT) and Entropy calculations, as well as time span, from the time series dataset.
+* Distinguished meal and no meal time series data through the training and testing of machine models, employing sklearn k-fold cross-validation for robust model training.
+* Trained Support Vector Machine (SVM) and Decision Tree Machine (DT), achieving a noteworthy DT F1-score of 77% and an Accuracy of 81%. Extracted ground truth and performed clustering using DBSCAN and Kmeans, attaining minimal DBSCAN entropy of 0.22 and maximum DBSCAN purity of 0.83.
 
 ## Code and Resources Used 
-**Python Version:** 3.7  
-**Packages:** pandas, numpy, sklearn, matplotlib, seaborn, selenium, flask, json, pickle  
-**For Web Framework Requirements:**  ```pip install -r requirements.txt```  
-**Scraper Github:** https://github.com/arapfaik/scraping-glassdoor-selenium  
-**Scraper Article:** https://towardsdatascience.com/selenium-tutorial-scraping-glassdoor-com-in-10-minutes-3d0915c6d905  
-**Flask Productionization:** https://towardsdatascience.com/productionize-a-machine-learning-model-with-flask-and-heroku-8201260503d2
+**Python Version:** 3.11  
+**Packages:** pandas, numpy, sklearn, matplotlib, scikit-learn, scipy, pickle  
+**Project Source:** Arizona State University, CSE 572 Data Mining
 
-## YouTube Project Walk-Through
-https://www.youtube.com/playlist?list=PL2zq7klxX5ASFejJj80ob9ZAnBHdz5O1t
+## Dataset:
+### Two datasets:
+1. From the Continuous Glucose Sensor (CGMData.csv) and
+2. from the insulin pump (InsulinData.csv)
+### The output of the CGM sensor consists of three columns:
+1. Data time stamp (Columns B and C combined),
+2. the 5 minute filtered CGM reading in mg/dL, (Column AE) and
+3. the ISIG value which is the raw sensor output every 5 mins.
+### The output of the pump has the following information:
+1. Data time stamp,
+2. Basal setting,
+3. Micro bolus every 5 mins,
+4. Meal intake amount in terms of grams of carbohydrate,
+5. Meal bolus,
+6. correction bolus,
+7. correction factor,
+8. CGM calibration or insulin reservoir-related alarms, and
+9. auto mode exit events and unique codes representing reasons (Column Q).
 
-## Web Scraping
-Tweaked the web scraper github repo (above) to scrape 1000 job postings from glassdoor.com. With each job, we got the following:
-*	Job title
-*	Salary Estimate
-*	Job Description
-*	Rating
-*	Company 
-*	Location
-*	Company Headquarters 
-*	Company Size
-*	Company Founded Date
-*	Type of Ownership 
-*	Industry
-*	Sector
-*	Revenue
-*	Competitors 
+## Time Series Extraction
+The data is in reverse order of time. This means that the first row is the end of the data collection whereas the last row is the beginning of the data collection. The data starts with manual mode. Manual mode continues until you get a message “AUTO MODE ACTIVE PLGM OFF” in the column “Q” of the InsulinData.csv. From then onwards Auto mode starts. You may get multiple “AUTO MODE ACTIVE PLGM OFF” in column “Q” but only use the earliest one to determine when you switch to auto mode. There is no switching back to manual mode, so the first task is to determine the time stamp when Auto mode starts. The time stamp of the CGM data is not the same as the timestamp of the insulin pump data because these are two different devices which
+operate asynchronously.
+Once determined the start of Auto Mode from InsulinData.csv, I have to figure out the
+timestamp in CGMData.csv where Auto mode starts. This can be done simply by searching for
+the time stamp that is nearest to (and later than) the Auto mode start time stamp obtained
+from InsulinData.csv. 
+For each user, CGM data is first parsed and divided into segments, where each segment corresponds to a day worth of data. One day is considered to start at 12 am and end at 11:59 pm. To compute the percentage with respect to 24 hours, the total number of samples in the
+specified range is divided by 288.
+
+### Meal data can be extracted as follows:
+From the InsulinData.csv file, search the column Y for a non NAN non zero value. This time
+indicates the start of meal consumption time tm. Meal data comprises a 2hr 30 min stretch of
+CGM data that starts from tm-30min and extends to tm+2hrs.
+### No meal data comprises 2 hrs of raw data that does not have meal intake.
 
 ## Data Cleaning
-After scraping the data, I needed to clean it up so that it was usable for our model. I made the following changes and created the following variables:
+A particular segment may not have all 288 data points. In the data files, those are represented as NaN. To tackle the missing data problem, I tried to do the linear interpolation and directly delete the data from the entire day. According to the metrics I obtained, I choose directly deleting for data cleaning.
 
-*	Parsed numeric data out of salary 
-*	Made columns for employer provided salary and hourly wages 
-*	Removed rows without salary 
-*	Parsed rating out of company text 
-*	Made a new column for company state 
-*	Added a column for if the job was at the company’s headquarters 
-*	Transformed founded date into age of company 
-*	Made columns for if different skills were listed in the job description:
-    * Python  
-    * R  
-    * Excel  
-    * AWS  
-    * Spark 
-*	Column for simplified job title and Seniority 
-*	Column for description length 
+## Distinguish Meal and No-meal: Supervised Machine learning Model  
 
-## EDA
-I looked at the distributions of the data and the value counts for the various categorical variables. Below are a few highlights from the pivot tables. 
+### Extracting features: 
+The features were carefully selected and calculated from the oringinal data for model traing, including:
+* The climb-up time span
+* dG(value change speed from gluce min to max after meal)
+* Fast Fourier Transform (FFT)
+* Entropy
 
-![alt text](https://github.com/PlayingNumbers/ds_salary_proj/blob/master/salary_by_job_title.PNG "Salary by Position")
-![alt text](https://github.com/PlayingNumbers/ds_salary_proj/blob/master/positions_by_state.png "Job Opportunities by State")
-![alt text](https://github.com/PlayingNumbers/ds_salary_proj/blob/master/correlation_visual.png "Correlations")
+### Machines and Performance:
+*	**Decision Tree Machine** :
+   F1-score: 77%
+ 	Accuracy: 81%
+*	**Support Vector Machine**
+   F1-score: 65%
+ 	Accuracy: 73%
 
-## Model Building 
+## Distinguish Meal and No-meal: Clustering
 
-First, I transformed the categorical variables into dummy variables. I also split the data into train and tests sets with a test size of 20%.   
+### Extracting Ground Truth:
+Derive the max and min value of meal intake amount from the Y column of the Insulin data. Discretize the meal amount in bins of size 20. Consider each row in the meal data matrix, Put them in the respective bins according to their meal amount label. In total, I should have n = (max-min)/20 bins.
 
-I tried three different models and evaluated them using Mean Absolute Error. I chose MAE because it is relatively easy to interpret and outliers aren’t particularly bad in for this type of model.   
+### Performing clustering:
+Use the features extracted above to cluster the meal data into n clusters with DBSCAN and KMeans respectively.
 
-I tried three different models:
-*	**Multiple Linear Regression** – Baseline for the model
-*	**Lasso Regression** – Because of the sparse data from the many categorical variables, I thought a normalized regression like lasso would be effective.
-*	**Random Forest** – Again, with the sparsity associated with the data, I thought that this would be a good fit. 
+### Accuracy of Clustering:
+*	**DBSCAN**:
+   Entropy: 0.22
+ 	Purity: 0.83
+*	**Kmeans**:
+   Entropy: 0.36
+ 	Purity: 0.0.75
 
-## Model performance
-The Random Forest model far outperformed the other approaches on the test and validation sets. 
-*	**Random Forest** : MAE = 11.22
-*	**Linear Regression**: MAE = 18.86
-*	**Ridge Regression**: MAE = 19.67
-
-## Productionization 
-In this step, I built a flask API endpoint that was hosted on a local webserver by following along with the TDS tutorial in the reference section above. The API endpoint takes in a request with a list of values from a job listing and returns an estimated salary. 
