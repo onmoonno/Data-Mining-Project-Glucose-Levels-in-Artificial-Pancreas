@@ -81,3 +81,8 @@ Use the features extracted above to cluster the meal data into n clusters with D
    Entropy: 0.36
  	Purity: 0.0.75
 
+## Acknowledgments
+This project was developed as part of the coursework for CSE 572: Data Mining at Arizona State University. Special thanks to the course instructors for their guidance and the provided materials.
+
+
+
